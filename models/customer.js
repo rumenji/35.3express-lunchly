@@ -16,8 +16,21 @@ class Customer {
 
   /** find all customers. */
 
-  static async all() {
-    const results = await db.query(
+  static async all(search) {
+    let results;
+    if(search){
+      results = await db.query(
+        `SELECT id, 
+           first_name AS "firstName",  
+           last_name AS "lastName", 
+           phone, 
+           notes
+         FROM customers WHERE last_name ILIKE $1
+         ORDER BY last_name, first_name`,
+         [search]
+      );
+    } else{
+    results = await db.query(
       `SELECT id, 
          first_name AS "firstName",  
          last_name AS "lastName", 
@@ -26,9 +39,24 @@ class Customer {
        FROM customers
        ORDER BY last_name, first_name`
     );
+    }
     return results.rows.map(c => new Customer(c));
   }
 
+  // return best customers
+  static async getBest(){
+    const results = await db.query(
+      `SELECT c.id, 
+         c.first_name AS "firstName",  
+         c.last_name AS "lastName", 
+         c.phone, 
+         c.notes,
+         COUNT(r.id)
+       FROM customers AS c JOIN reservations AS r ON c.id = r.customer_id
+       GROUP BY c.id ORDER BY COUNT(r.id) DESC LIMIT 10`
+    )
+    return results.rows.map(c => new Customer(c))
+  }
   /** get a customer by ID. */
 
   static async get(id) {
@@ -77,6 +105,10 @@ class Customer {
         [this.firstName, this.lastName, this.phone, this.notes, this.id]
       );
     }
+  }
+
+  get fullName(){
+    return `${this.firstName} ${this.lastName}`
   }
 }
 
